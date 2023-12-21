@@ -128,6 +128,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AES.cpp" />
+    <ClCompile Include="CipherTests.cpp" />
+    <ClCompile Include="CipherTests.h" />
     <ClCompile Include="ImageConvertor.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

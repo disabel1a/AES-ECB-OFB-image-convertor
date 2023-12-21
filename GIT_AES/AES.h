@@ -54,8 +54,17 @@ private:
 
     void xorBlocks(BYTE* first, BYTE* second, BYTE* out, WORD len);
 
+    void encryptBlockWithFreq(const BYTE in[], BYTE out[], BYTE* roundKeys);
+
+    void copyState(BYTE state[4][Nb], BYTE prevState[4][Nb]);
+
+    void countChanges(vector<int>& counter, BYTE state[4][Nb], BYTE prevState[4][Nb]);
+
 public:
     explicit AES(const AESKeyLength keyLength = AESKeyLength::AES_256);
+
+    vector<BYTE> encryptWithFreqOFB(vector<BYTE> input, vector<BYTE> initVector, vector<BYTE> key);
+    BYTE* encryptWithFreqOFB(const BYTE plaintext[], BYTE* initVector, WORD textLenght, const BYTE key[]);
 
     BYTE* encryptECB(const BYTE plaintext[], WORD textLenght, const BYTE key[]);
     BYTE* decryptECB(const BYTE ciphertext[], WORD textLenght, const BYTE key[]);
@@ -78,6 +87,8 @@ public:
     std::vector<unsigned char> ArrayToVector(unsigned char* a, unsigned int len);
 
     unsigned char* VectorToArray(std::vector<unsigned char>& a);
+
+    WORD getNumberRounds();
 };
 
 const BYTE sbox[16][16] = {

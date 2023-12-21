@@ -484,3 +484,113 @@ unsigned char* AES::VectorToArray(std::vector<unsigned char>& a)
 {
     return a.data();
 }
+
+WORD AES::getNumberRounds() {
+    return Nr;
+}
+
+void AES::encryptBlockWithFreq(const BYTE plaintext[], BYTE ciphertext[], BYTE* roundKeys) {
+    BYTE state[4][Nb];
+    WORD i, j, round;
+
+    BYTE prevState[4][Nb];
+
+    vector<int> freqCounter(128, 0);
+
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < Nb; j++) {
+            state[i][j] = plaintext[i + 4 * j];
+        }
+    }
+
+    copyState(state, prevState);
+    addRoundKey(state, roundKeys);
+    countChanges(freqCounter, state, prevState);
+
+    for (round = 1; round <= Nr - 1; round++) {
+        copyState(state, prevState);
+        subBytes(state);
+        shiftRows(state);
+        mixColumns(state);
+        addRoundKey(state, roundKeys + round * 4 * Nb);
+        countChanges(freqCounter, state, prevState);
+    }
+
+    copyState(state, prevState);
+    subBytes(state);
+    shiftRows(state);
+    addRoundKey(state, roundKeys + Nr * 4 * Nb);
+    countChanges(freqCounter, state, prevState);
+
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < Nb; j++) {
+            ciphertext[i + 4 * j] = state[i][j];
+        }
+    }
+
+    cout << "Counter val: ";
+    for (int val : freqCounter) {
+        cout << val << ", ";
+    }
+    cout << endl;
+}
+
+void AES::copyState(BYTE state[4][Nb], BYTE prevState[4][Nb]) {
+    for (WORD i = 0; i < 4; i++) {
+        for (WORD j = 0; j < Nb; j++) {
+            prevState[i][j] = state[i][j];
+        }
+    }
+}
+
+void AES::countChanges(vector<int>& counter, BYTE state[4][Nb], BYTE prevState[4][Nb]) {
+    BYTE byte;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < Nb; j++) {
+            byte = state[i][j] ^ prevState[i][j];
+            for (int k = 0; k < 8; k++) {
+                if((byte & 0x80))
+                    counter[(i * Nb * 8) + (j * 8) + k] += 1;
+                byte <<= 1;
+            }
+        }
+    }
+}
+
+vector<BYTE> AES::encryptWithFreqOFB(vector<BYTE> input, vector<BYTE> initVector, vector<BYTE> key)
+{
+    while (input.size() % blockSize != 0) {
+        input.push_back('\0');
+    }
+
+    BYTE* output = encryptWithFreqOFB(VectorToArray(input), VectorToArray(initVector), (WORD)input.size(), VectorToArray(key));
+
+    vector<BYTE> out = ArrayToVector(output, input.size());
+
+    delete[] output;
+
+    return out;
+}
+
+BYTE* AES::encryptWithFreqOFB(const BYTE plaintext[], BYTE* initVector, WORD textLenght, const BYTE key[])
+{
+    BYTE* out = new BYTE[textLenght];
+    BYTE inBlock[blockSize];
+    BYTE outBlock[blockSize];
+    BYTE* roundKeys = new BYTE[4 * Nb * (Nr + 1)];
+
+    keyExpansion(key, roundKeys);
+    memcpy(inBlock, initVector, blockSize);
+
+    for (size_t i = 0; i < textLenght; i += blockSize) {
+        encryptBlockWithFreq(inBlock, outBlock, roundKeys);
+        memcpy(inBlock, plaintext + i, blockSize);
+
+        xorBlocks(inBlock, outBlock, out + i, blockSize);
+        memcpy(inBlock, outBlock, blockSize);
+    }
+
+    delete[] roundKeys;
+
+    return out;
+}
